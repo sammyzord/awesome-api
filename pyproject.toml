@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "poke-api"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+fastapi = "^0.75.0"
+uvicorn = "^0.17.6"
+
+[tool.poetry.dev-dependencies]
+flake8 = "^4.0.1"
+black = "^22.1.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
