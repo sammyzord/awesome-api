@@ -6,7 +6,7 @@ from ..services.post import PostDBService
 router = APIRouter()
 
 
-@router.post("/", tags=["posts"])
+@router.post("", tags=["posts"])
 async def create_post(
     post: PostIn, post_service: PostDBService = Depends(get_post_service)
 ):
