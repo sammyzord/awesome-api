@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, event, update
 from sqlalchemy.orm import object_session
 from ..database.connection import Base
+from ..dependencies.main import get_hashids
 
 
 class Post(Base):
@@ -16,5 +17,9 @@ class Post(Base):
 def do_stuff(mapper, connect, post):
     # target is an instance of Table
 
-    statement = update(Post).where(Post.id == post.id).values(hash=f"{post.id}blabla")
+    statement = (
+        update(Post)
+        .where(Post.id == post.id)
+        .values(hash=get_hashids().encode(post.id))
+    )
     object_session(post).execute(statement)
