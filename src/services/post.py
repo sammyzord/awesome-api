@@ -15,4 +15,15 @@ class PostDBService(AppDBService):
             return PostOut.from_orm(new_post), None
 
         except Exception as err:
-            return None, str(err)
+            return None, (500, str(err))
+
+    def retrieve_post(self, hash: str):
+        try:
+            post = self.db.query(Post).filter(Post.hash == hash).first()
+            if post is None:
+                return None, (404, "Post not found")
+
+            return PostOut.from_orm(post), None
+
+        except Exception as err:
+            return None, (500, str(err))
