@@ -1,14 +1,28 @@
-from fastapi import APIRouter, Depends
-from ..schemas.post import PostIn
-from ..dependencies.post import get_post_service
+from fastapi import APIRouter, HTTPException, Depends
+from ..schemas import HTTPError
+from ..schemas.post import PostIn, PostOut
 from ..services.post import PostDBService
+from ..dependencies.post import get_post_service
+
 
 router = APIRouter()
 
 
-@router.post("", tags=["posts"])
+@router.post(
+    "",
+    status_code=201,
+    responses={201: {"model": PostOut}, 500: {"model": HTTPError}},
+    tags=["posts"],
+)
 async def create_post(
     post: PostIn, post_service: PostDBService = Depends(get_post_service)
 ):
-    post_service.create_post(post)
-    return "sucesso"
+
+    new_post, err = post_service.create_post(post)
+    if err is not None:
+        raise HTTPException(
+            status_code=500,
+            detail=err,
+        )
+
+    return new_post

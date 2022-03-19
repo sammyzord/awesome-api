@@ -8,6 +8,7 @@ class Title(ConstrainedStr):
 
 class Content(ConstrainedStr):
     max_length = 1000
+    min_length = 5
 
 
 class PostIn(BaseModel):
@@ -15,8 +16,7 @@ class PostIn(BaseModel):
     content: Content
 
 
-class Post(PostIn):
-    id: int
+class PostOut(PostIn):
     hash: str
 
     class Config:

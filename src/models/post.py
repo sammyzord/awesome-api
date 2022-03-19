@@ -14,7 +14,7 @@ class Post(Base):
 
 
 @event.listens_for(Post, "after_insert")
-def do_stuff(mapper, connect, post):
+def do_stuff(_mapper, _connect, post):
     # target is an instance of Table
 
     statement = (
