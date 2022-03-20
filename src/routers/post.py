@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from ..schemas import HTTPError
 from ..schemas.post import PostIn, PostOut
 from ..services.post import PostDBService
+from ..dependencies.auth import validate_jwt
 from ..dependencies.post import get_post_service
 
 
@@ -15,7 +16,9 @@ router = APIRouter()
     tags=["posts"],
 )
 async def create_post(
-    post: PostIn, post_service: PostDBService = Depends(get_post_service)
+    post: PostIn,
+    post_service: PostDBService = Depends(get_post_service),
+    user=Depends(validate_jwt),
 ):
 
     new_post, err = post_service.create_post(post)
