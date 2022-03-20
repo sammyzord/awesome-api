@@ -15,11 +15,10 @@ class Post(Base):
 
 @event.listens_for(Post, "after_insert")
 def do_stuff(_mapper, _connect, post):
-    # target is an instance of Table
-
     statement = (
         update(Post)
         .where(Post.id == post.id)
         .values(hash=get_hashids().encode(post.id))
     )
+
     object_session(post).execute(statement)

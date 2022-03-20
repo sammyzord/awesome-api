@@ -1,12 +1,12 @@
 from .main import AppDBService
 from ..schemas.post import PostIn, PostOut
-from ..models.post import Post
+from ..models.post import Post as PostModel
 
 
 class PostDBService(AppDBService):
     def create_post(self, post: PostIn):
         try:
-            new_post = Post(title=post.title, content=post.content)
+            new_post = PostModel(title=post.title, content=post.content)
             self.db.add(new_post)
             self.db.commit()
 
@@ -19,7 +19,7 @@ class PostDBService(AppDBService):
 
     def retrieve_post(self, hash: str):
         try:
-            post = self.db.query(Post).filter(Post.hash == hash).first()
+            post = self.db.query(PostModel).filter(PostModel.hash == hash).first()
             if post is None:
                 return None, (404, "Post not found")
 
