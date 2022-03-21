@@ -20,8 +20,8 @@ def get_current_user(
     user, err = user_service.auth_user(jwt_payload["id"])
     if err is not None:
         raise HTTPException(
-            status_code=err[0],
-            detail=err[1],
+            status_code=err.status_code,
+            detail=err.message,
         )
 
     return user

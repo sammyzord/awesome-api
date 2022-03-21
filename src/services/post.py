@@ -1,4 +1,5 @@
 from .main import AppDBService
+from ..schemas import DBServiceError
 from ..schemas.post import PostIn, PostOut
 from ..models.post import Post as PostModel
 
@@ -15,15 +16,15 @@ class PostDBService(AppDBService):
             return PostOut.from_orm(new_post), None
 
         except Exception as err:
-            return None, (500, str(err))
+            return None, DBServiceError(status_code=500, message=str(err))
 
     def retrieve_post(self, hash: str):
         try:
             post = self.db.query(PostModel).filter(PostModel.hash == hash).first()
             if post is None:
-                return None, (404, "Post not found")
+                return None, DBServiceError(status_code=404, message="Post not found")
 
             return PostOut.from_orm(post), None
 
         except Exception as err:
-            return None, (500, str(err))
+            return None, DBServiceError(status_code=500, message=str(err))

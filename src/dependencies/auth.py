@@ -34,8 +34,8 @@ def validate_jwt(authorization: Optional[str] = Header(None)):
     payload, err = AuthService.verify_jwt(token[7:])
     if err is not None:
         raise HTTPException(
-            status_code=err[0],
-            detail=err[1],
+            status_code=err.status_code,
+            detail=err.message,
         )
 
     return payload

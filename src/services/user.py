@@ -1,4 +1,5 @@
 from .main import AppDBService
+from ..schemas import DBServiceError
 from ..schemas.user import User
 from ..models.user import User as UserModel
 
@@ -8,9 +9,9 @@ class UserDBService(AppDBService):
         try:
             user = self.db.query(UserModel).filter(UserModel.id == user_id).first()
             if user is None:
-                return None, (403, "invalid user")
+                return None, DBServiceError(status_code=403, message="invalid user")
 
             return User.from_orm(user), None
 
         except Exception as err:
-            return None, (500, str(err))
+            return None, DBServiceError(status_code=500, message=str(err))

@@ -23,8 +23,8 @@ async def register(
     err = registration_service.register_user(user)
     if err is not None:
         raise HTTPException(
-            status_code=err[0],
-            detail=err[1],
+            status_code=err.status_code,
+            detail=err.message,
         )
     return "success"
 
@@ -46,8 +46,8 @@ async def login(
     tokens, err = auth_service.login(auth_request)
     if err is not None:
         raise HTTPException(
-            status_code=err[0],
-            detail=err[1],
+            status_code=err.status_code,
+            detail=err.message,
         )
 
     elif tokens is not None:
@@ -80,8 +80,8 @@ async def refresh_authentication(
     jwt_token, err = auth_service.refresh(user_id, token)
     if err is not None:
         raise HTTPException(
-            status_code=err[0],
-            detail=err[1],
+            status_code=err.status_code,
+            detail=err.message,
         )
 
     elif jwt_token is not None:

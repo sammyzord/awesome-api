@@ -24,8 +24,8 @@ async def create_post(
     new_post, err = post_service.create_post(post)
     if err is not None:
         raise HTTPException(
-            status_code=err[0],
-            detail=err[1],
+            status_code=err.status_code,
+            detail=err.message,
         )
 
     return new_post
@@ -47,8 +47,8 @@ async def retrieve_post(
     post, err = post_service.retrieve_post(hash)
     if err is not None:
         raise HTTPException(
-            status_code=err[0],
-            detail=err[1],
+            status_code=err.status_code,
+            detail=err.message,
         )
 
     return post

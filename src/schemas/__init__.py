@@ -8,3 +8,8 @@ class HTTPError(BaseModel):
         schema_extra = {
             "example": {"detail": "HTTPException raised."},
         }
+
+
+class DBServiceError(BaseModel):
+    status_code: int
+    message: str

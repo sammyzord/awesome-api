@@ -4,6 +4,7 @@ import bcrypt
 from datetime import datetime, timezone, timedelta
 from sqlalchemy.exc import IntegrityError
 from .main import AppDBService
+from schemas import DBServiceError
 from ..schemas.user import UserIn, User
 from ..schemas.auth import AuthRequest
 from ..models.user import User as UserModel
@@ -29,21 +30,20 @@ class RegistrationService(AppDBService):
             return None
 
         except IntegrityError:
-            return (400, self.username_taken)
-
+            return DBServiceError(status_code=400, message=self.username_taken)
         except Exception as err:
-            return (500, str(err))
+            return DBServiceError(status_code=500, message=str(err))
 
     def username_available(self, username: str):
         try:
             exists = bool(self.db.query(User).filter(User.username == username).first())
             if exists is not None:
-                return (400, self.username_taken)
+                return DBServiceError(status_code=400, message=self.username_taken)
 
             return None
 
         except Exception as err:
-            return (500, str(err))
+            return DBServiceError(status_code=500, message=str(err))
 
 
 class AuthService(AppDBService):
@@ -59,13 +59,17 @@ class AuthService(AppDBService):
                 self.db.query(UserModel).filter(UserModel.username == username).first()
             )
             if query is None:
-                return None, (400, self.invalid_credentials)
+                return None, DBServiceError(
+                    status_code=400, message=self.invalid_credentials
+                )
 
             auth_user = User.from_orm(query)
 
             match = bcrypt.checkpw(password, auth_user.password.encode("utf-8"))
             if not match:
-                return None, (400, self.invalid_credentials)
+                return None, DBServiceError(
+                    status_code=400, message=self.invalid_credentials
+                )
 
             refresh_token = secrets.token_hex(20)
 
@@ -77,7 +81,7 @@ class AuthService(AppDBService):
             return (jwt_token, refresh_token), None
 
         except Exception as err:
-            return None, (500, str(err))
+            return None, DBServiceError(status_code=500, message=str(err))
 
     def refresh(self, user_id: int, refresh_token: str):
         try:
@@ -89,7 +93,7 @@ class AuthService(AppDBService):
                 .first()
             )
             if query is None:
-                return None, (400, "invalid token")
+                return None, DBServiceError(status_code=400, message="invalid token")
 
             auth_user = User.from_orm(query)
 
@@ -97,7 +101,7 @@ class AuthService(AppDBService):
 
             return jwt_token, None
         except Exception as err:
-            return None, (500, str(err))
+            return None, DBServiceError(status_code=500, message=str(err))
 
     @staticmethod
     def sign_jwt(user: User) -> str:
@@ -117,6 +121,6 @@ class AuthService(AppDBService):
                 None,
             )
         except jwt.ExpiredSignatureError:
-            return None, (401, "expired token")
+            return None, DBServiceError(status_code=401, message="expired token")
         except Exception as err:
-            return None, (401, str(err))
+            return None, DBServiceError(status_code=401, message=str(err))
