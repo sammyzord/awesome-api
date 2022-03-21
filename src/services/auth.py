@@ -54,11 +54,11 @@ class RegistrationService(AppDBService):
                 return None, DBServiceError(status_code=404, message="User not found")
 
             word_list = self.mnemo.generate(strength=256)
+            byte_word_list = word_list.encode("utf-8")
 
-            seed = self.mnemo.to_seed(word_list)
-            seed = seed.replace(b"\x00", b"")
-
-            recovery_key = bcrypt.hashpw(seed, bcrypt.gensalt()).decode("utf8")
+            recovery_key = bcrypt.hashpw(byte_word_list, bcrypt.gensalt()).decode(
+                "utf8"
+            )
 
             query.recovery_key = recovery_key
             self.db.commit()
@@ -73,10 +73,9 @@ class RegistrationService(AppDBService):
             if query is None:
                 return None, DBServiceError(status_code=404, message="User not found")
 
-            seed = self.mnemo.to_seed(word_list)
-            seed = seed.replace(b"\x00", b"")
+            byte_word_list = word_list.encode("utf-8")
 
-            match = bcrypt.checkpw(seed, query.recovery_key.encode("utf-8"))
+            match = bcrypt.checkpw(byte_word_list, query.recovery_key.encode("utf-8"))
             if not match:
                 return None, DBServiceError(
                     status_code=400, message="invalid recovery phrase"
