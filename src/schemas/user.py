@@ -6,16 +6,6 @@ class Username(ConstrainedStr):
     min_length = 2
 
 
-class AuthResponse(BaseModel):
-    jwt_token: str
-    refresh_token: str
-
-
-class AuthUser(BaseModel):
-    username: Username
-    password: str
-
-
 class UserIn(BaseModel):
     username: Username
     password: str

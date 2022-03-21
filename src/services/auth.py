@@ -4,7 +4,8 @@ import bcrypt
 from datetime import datetime, timezone, timedelta
 from sqlalchemy.exc import IntegrityError
 from .main import AppDBService
-from ..schemas.user import AuthUser, UserIn, User
+from ..schemas.user import UserIn, User
+from ..schemas.auth import AuthRequest
 from ..models.user import User as UserModel
 from ..dependencies.main import settings
 
@@ -18,7 +19,7 @@ class RegistrationService(AppDBService):
             username = user.username
             byte_password = user.password.encode("utf-8")
 
-            password = bcrypt.hashpw(byte_password, bcrypt.gensalt()).decode('utf8')
+            password = bcrypt.hashpw(byte_password, bcrypt.gensalt()).decode("utf8")
 
             new_user = UserModel(username=username, password=password)
 
@@ -49,10 +50,10 @@ class AuthService(AppDBService):
 
     invalid_credentials = "invalid credentials"
 
-    def login(self, user: AuthUser):
+    def login(self, auth_request: AuthRequest):
         try:
-            username = user.username
-            password = user.password.encode("utf-8")
+            username = auth_request.username
+            password = auth_request.password.encode("utf-8")
 
             query = (
                 self.db.query(UserModel).filter(UserModel.username == username).first()
@@ -71,17 +72,38 @@ class AuthService(AppDBService):
             query.refresh_token = refresh_token
             self.db.commit()
 
-            jwt_payload = {
-                "id": auth_user.id,
-                "username": auth_user.username,
-                "exp": datetime.now(tz=timezone.utc) + timedelta(minutes=5),
-            }
-
-            jwt_token = jwt.encode(
-                jwt_payload, settings().secret_key, algorithm="HS256"
-            )
+            jwt_token = self.__sign_jwt(auth_user)
 
             return (jwt_token, refresh_token), None
 
         except Exception as err:
             return None, (500, str(err))
+
+    def refresh(self, user_id: int, refresh_token: str):
+        try:
+            query = (
+                self.db.query(UserModel)
+                .filter(
+                    UserModel.id == user_id, UserModel.refresh_token == refresh_token
+                )
+                .first()
+            )
+            if query is None:
+                return None, (400, "invalid token")
+
+            auth_user = User.from_orm(query)
+
+            jwt_token = self.__sign_jwt(auth_user)
+
+            return jwt_token, None
+        except Exception as err:
+            return None, (500, str(err))
+
+    def __sign_jwt(self, user: User) -> str:
+        jwt_payload = {
+            "id": user.id,
+            "username": user.username,
+            "exp": datetime.now(tz=timezone.utc) + timedelta(minutes=30),
+        }
+
+        return jwt.encode(jwt_payload, settings().secret_key, algorithm="HS256")
