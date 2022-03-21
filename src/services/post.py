@@ -1,13 +1,16 @@
 from .main import AppDBService
 from ..schemas import DBServiceError
+from ..schemas.user import User
 from ..schemas.post import PostIn, PostOut
 from ..models.post import Post as PostModel
 
 
 class PostDBService(AppDBService):
-    def create_post(self, post: PostIn):
+    def create_post(self, post: PostIn, user: User):
         try:
-            new_post = PostModel(title=post.title, content=post.content)
+            new_post = PostModel(
+                title=post.title, content=post.content, user_id=user.id
+            )
             self.db.add(new_post)
             self.db.commit()
 

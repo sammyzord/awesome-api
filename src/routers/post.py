@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from ..schemas import HTTPError
+from ..schemas.user import User
 from ..schemas.post import PostIn, PostOut
 from ..services.post import PostDBService
 from ..dependencies.user import get_current_active_user
@@ -18,10 +19,10 @@ router = APIRouter()
 async def create_post(
     post: PostIn,
     post_service: PostDBService = Depends(get_post_service),
-    user=Depends(get_current_active_user),
+    user: User = Depends(get_current_active_user),
 ):
 
-    new_post, err = post_service.create_post(post)
+    new_post, err = post_service.create_post(post, user)
     if err is not None:
         raise HTTPException(
             status_code=err.status_code,

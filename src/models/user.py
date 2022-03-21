@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy.orm import relationship
 from ..database.connection import Base
 
 
@@ -11,3 +12,4 @@ class User(Base):
     password = Column(String)
     recovery_key = Column(String, nullable=True)
     refresh_token = Column(String, nullable=True)
+    posts = relationship("Post", back_populates="user")

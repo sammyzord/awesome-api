@@ -1,4 +1,5 @@
 from typing import Optional
+from .user import UserOut
 from pydantic import BaseModel, ConstrainedStr
 
 
@@ -18,6 +19,7 @@ class PostIn(BaseModel):
 
 class PostOut(PostIn):
     hash: str
+    user: Optional[UserOut]
 
     class Config:
         orm_mode = True

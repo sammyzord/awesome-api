@@ -18,6 +18,14 @@ class UserIn(BaseModel):
         return v
 
 
+class UserOut(BaseModel):
+    id: int
+    username: Username
+
+    class Config:
+        orm_mode = True
+
+
 class User(BaseModel):
     id: int
     username: Username
