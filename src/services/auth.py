@@ -4,7 +4,7 @@ import bcrypt
 from datetime import datetime, timezone, timedelta
 from sqlalchemy.exc import IntegrityError
 from .main import AppDBService
-from schemas import DBServiceError
+from ..schemas import DBServiceError
 from ..schemas.user import UserIn, User
 from ..schemas.auth import AuthRequest
 from ..models.user import User as UserModel
