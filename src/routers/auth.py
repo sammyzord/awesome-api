@@ -1,10 +1,11 @@
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Depends, Response, Cookie
+from fastapi import APIRouter, HTTPException, Depends, Response, Cookie, Body
 from ..schemas import HTTPError
-from ..schemas.user import UserIn
+from ..schemas.user import User, UserIn
 from ..schemas.auth import AuthResponse, AuthRequest, RefreshRequest, RefreshResponse
 from ..services.auth import RegistrationService, AuthService
 from ..dependencies.auth import get_registration_service, get_auth_service
+from ..dependencies.user import get_current_user
 
 
 router = APIRouter()
@@ -86,3 +87,59 @@ async def refresh_authentication(
 
     elif jwt_token is not None:
         return RefreshResponse(jwt_token=jwt_token)
+
+
+@router.get(
+    "/recover/generate",
+    responses={
+        404: {"model": HTTPError},
+        500: {"model": HTTPError},
+    },
+    tags=["auth"],
+)
+def get_recovery_phrase(
+    user: User = Depends(get_current_user),
+    registration_service: RegistrationService = Depends(get_registration_service),
+):
+    if user.active:
+        raise HTTPException(
+            status_code=400,
+            detail="user already active",
+        )
+
+    recovery_phrase, err = registration_service.generate_recovery_key(user.id)
+    if err is not None:
+        raise HTTPException(
+            status_code=err.status_code,
+            detail=err.message,
+        )
+    return recovery_phrase
+
+
+@router.post(
+    "/recover/activate",
+    responses={
+        400: {"model": HTTPError},
+        500: {"model": HTTPError},
+    },
+    tags=["auth"],
+)
+def activate_account(
+    user: User = Depends(get_current_user),
+    registration_service: RegistrationService = Depends(get_registration_service),
+    word_list: str = Body(..., embed=True),
+):
+    if user.active:
+        raise HTTPException(
+            status_code=400,
+            detail="user already active",
+        )
+
+    _, err = registration_service.activate_user(word_list, user.id)
+    if err is not None:
+        raise HTTPException(
+            status_code=err.status_code,
+            detail=err.message,
+        )
+
+    return "success"

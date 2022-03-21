@@ -1,6 +1,7 @@
 import jwt
 import secrets
 import bcrypt
+from mnemonic import Mnemonic
 from datetime import datetime, timezone, timedelta
 from sqlalchemy.exc import IntegrityError
 from .main import AppDBService
@@ -14,6 +15,7 @@ from ..dependencies.main import settings
 class RegistrationService(AppDBService):
 
     username_taken = "username taken"
+    mnemo = Mnemonic("english")
 
     def register_user(self, user: UserIn):
         try:
@@ -44,6 +46,48 @@ class RegistrationService(AppDBService):
 
         except Exception as err:
             return DBServiceError(status_code=500, message=str(err))
+
+    def generate_recovery_key(self, user_id: int):
+        try:
+            query = self.db.query(UserModel).filter(UserModel.id == user_id).first()
+            if query is None:
+                return None, DBServiceError(status_code=404, message="User not found")
+
+            word_list = self.mnemo.generate(strength=256)
+
+            seed = self.mnemo.to_seed(word_list)
+            seed = seed.replace(b"\x00", b"")
+
+            recovery_key = bcrypt.hashpw(seed, bcrypt.gensalt()).decode("utf8")
+
+            query.recovery_key = recovery_key
+            self.db.commit()
+            return word_list, None
+
+        except Exception as err:
+            return None, DBServiceError(status_code=500, message=str(err))
+
+    def activate_user(self, word_list: str, user_id: int):
+        try:
+            query = self.db.query(UserModel).filter(UserModel.id == user_id).first()
+            if query is None:
+                return None, DBServiceError(status_code=404, message="User not found")
+
+            seed = self.mnemo.to_seed(word_list)
+            seed = seed.replace(b"\x00", b"")
+
+            match = bcrypt.checkpw(seed, query.recovery_key.encode("utf-8"))
+            if not match:
+                return None, DBServiceError(
+                    status_code=400, message="invalid recovery phrase"
+                )
+
+            query.active = True
+            self.db.commit()
+            return True, None
+
+        except Exception as err:
+            return None, DBServiceError(status_code=500, message=str(err))
 
 
 class AuthService(AppDBService):
