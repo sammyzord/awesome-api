@@ -22,6 +22,7 @@ class User(BaseModel):
     id: int
     username: Username
     password: str
+    active: bool
 
     class Config:
         orm_mode = True

@@ -1,6 +1,4 @@
-import jwt
 from .db import get_db
-from .main import settings
 from sqlalchemy.orm import Session
 from typing import Generator, Optional
 from fastapi import Header, HTTPException, Depends
@@ -26,18 +24,18 @@ def get_auth_service(
 
 
 def validate_jwt(authorization: Optional[str] = Header(None)):
-    try:
-        token = authorization or ""
-        if not token.startswith("Bearer "):
-            raise HTTPException(
-                status_code=400,
-                detail="invalid token",
-            )
-
-        jwt.decode(token[7:], settings().secret_key, algorithms=["HS256"])
-
-    except jwt.ExpiredSignatureError:
+    token = authorization or ""
+    if not token.startswith("Bearer "):
         raise HTTPException(
-            status_code=401,
-            detail="expired token",
+            status_code=400,
+            detail="invalid token",
         )
+
+    payload, err = AuthService.verify_jwt(token[7:])
+    if err is not None:
+        raise HTTPException(
+            status_code=err[0],
+            detail=err[1],
+        )
+
+    return payload

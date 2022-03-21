@@ -72,7 +72,7 @@ class AuthService(AppDBService):
             query.refresh_token = refresh_token
             self.db.commit()
 
-            jwt_token = self.__sign_jwt(auth_user)
+            jwt_token = self.sign_jwt(auth_user)
 
             return (jwt_token, refresh_token), None
 
@@ -93,13 +93,14 @@ class AuthService(AppDBService):
 
             auth_user = User.from_orm(query)
 
-            jwt_token = self.__sign_jwt(auth_user)
+            jwt_token = self.sign_jwt(auth_user)
 
             return jwt_token, None
         except Exception as err:
             return None, (500, str(err))
 
-    def __sign_jwt(self, user: User) -> str:
+    @staticmethod
+    def sign_jwt(user: User) -> str:
         jwt_payload = {
             "id": user.id,
             "username": user.username,
@@ -107,3 +108,15 @@ class AuthService(AppDBService):
         }
 
         return jwt.encode(jwt_payload, settings().secret_key, algorithm="HS256")
+
+    @staticmethod
+    def verify_jwt(jwt_token: str):
+        try:
+            return (
+                jwt.decode(jwt_token, settings().secret_key, algorithms=["HS256"]),
+                None,
+            )
+        except jwt.ExpiredSignatureError:
+            return None, (401, "expired token")
+        except Exception as err:
+            return None, (401, str(err))
