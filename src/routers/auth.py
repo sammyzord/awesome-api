@@ -24,7 +24,7 @@ router = APIRouter()
     responses={500: {"model": HTTPError}},
     tags=["auth"],
 )
-async def register(
+def register(
     request: RegisterRequest,
     registration_service: RegistrationService = Depends(get_registration_service),
 ):
@@ -46,7 +46,7 @@ async def register(
     },
     tags=["auth"],
 )
-async def login(
+def login(
     response: Response,
     auth_request: AuthRequest,
     auth_service: AuthService = Depends(get_auth_service),
@@ -72,7 +72,7 @@ async def login(
     },
     tags=["auth"],
 )
-async def refresh_authentication(
+def refresh_authentication(
     refresh_request: RefreshRequest,
     refresh_token: Optional[str] = Cookie(None),
     auth_service: AuthService = Depends(get_auth_service),

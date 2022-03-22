@@ -16,7 +16,7 @@ router = APIRouter()
     responses={201: {"model": PostOut}, 500: {"model": HTTPError}},
     tags=["posts"],
 )
-async def create_post(
+def create_post(
     post: PostIn,
     post_service: PostDBService = Depends(get_post_service),
     user: User = Depends(get_current_active_user),
@@ -42,9 +42,7 @@ async def create_post(
     },
     tags=["posts"],
 )
-async def retrieve_post(
-    hash: str, post_service: PostDBService = Depends(get_post_service)
-):
+def retrieve_post(hash: str, post_service: PostDBService = Depends(get_post_service)):
     post, err = post_service.retrieve_post(hash)
     if err is not None:
         raise HTTPException(
