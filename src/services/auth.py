@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from .main import AppDBService
 from ..schemas import DBServiceError
 from ..schemas.user import User
-from ..schemas.auth import RegisterRequest, AuthRequest
+from ..schemas.auth import RegisterRequest, AuthRequest, RecoveryRequest
 from ..models.user import User as UserModel
 from ..dependencies.main import settings
 
@@ -17,10 +17,10 @@ class RegistrationService(AppDBService):
     username_taken = "username taken"
     mnemo = Mnemonic("english")
 
-    def register_user(self, user: RegisterRequest):
+    def register_user(self, request: RegisterRequest):
         try:
-            username = user.username
-            byte_password = user.password.encode("utf-8")
+            username = request.username
+            byte_password = request.password.encode("utf-8")
 
             password = bcrypt.hashpw(byte_password, bcrypt.gensalt()).decode("utf-8")
 
@@ -88,8 +88,37 @@ class RegistrationService(AppDBService):
         except Exception as err:
             return None, DBServiceError(status_code=500, message=str(err))
 
-    def reset_password(self):
-        pass
+    def reset_password(self, request: RecoveryRequest):
+        try:
+            username = request.username
+
+            query = (
+                self.db.query(UserModel).filter(UserModel.username == username).first()
+            )
+            if query is None:
+                return None, DBServiceError(
+                    status_code=400, message="invalid recovery credentials"
+                )
+
+            word_list = request.recovery_key
+            byte_word_list = word_list.encode("utf-8")
+
+            match = bcrypt.checkpw(byte_word_list, query.recovery_key.encode("utf-8"))
+            if not match:
+                return None, DBServiceError(
+                    status_code=400, message="invalid recovery credentials"
+                )
+
+            byte_password = request.password.encode("utf-8")
+
+            password = bcrypt.hashpw(byte_password, bcrypt.gensalt()).decode("utf-8")
+
+            query.password = password
+            self.db.commit()
+            return True, None
+
+        except Exception as err:
+            return None, DBServiceError(status_code=500, message=str(err))
 
 
 class AuthService(AppDBService):

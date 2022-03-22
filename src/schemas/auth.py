@@ -22,7 +22,7 @@ class RegisterRequest(ConfirmPassword):
     username: Username
 
 
-class RecoveryRequest(ConfirmPassword):
+class RecoveryRequest(RegisterRequest):
     recovery_key: str
 
 

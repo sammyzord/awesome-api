@@ -8,6 +8,7 @@ from ..schemas.auth import (
     RefreshRequest,
     RefreshResponse,
     RegisterRequest,
+    RecoveryRequest,
 )
 from ..services.auth import RegistrationService, AuthService
 from ..dependencies.auth import get_registration_service, get_auth_service
@@ -24,10 +25,10 @@ router = APIRouter()
     tags=["auth"],
 )
 async def register(
-    user: RegisterRequest,
+    request: RegisterRequest,
     registration_service: RegistrationService = Depends(get_registration_service),
 ):
-    err = registration_service.register_user(user)
+    err = registration_service.register_user(request)
     if err is not None:
         raise HTTPException(
             status_code=err.status_code,
@@ -95,7 +96,7 @@ async def refresh_authentication(
 
 
 @router.get(
-    "/recover/generate",
+    "/reset/generate",
     responses={
         404: {"model": HTTPError},
         500: {"model": HTTPError},
@@ -122,7 +123,7 @@ def get_recovery_phrase(
 
 
 @router.post(
-    "/recover/activate",
+    "/activate",
     responses={
         400: {"model": HTTPError},
         404: {"model": HTTPError},
@@ -142,6 +143,28 @@ def activate_account(
         )
 
     _, err = registration_service.activate_user(word_list, user.id)
+    if err is not None:
+        raise HTTPException(
+            status_code=err.status_code,
+            detail=err.message,
+        )
+
+    return "success"
+
+
+@router.post(
+    "/reset",
+    responses={
+        400: {"model": HTTPError},
+        500: {"model": HTTPError},
+    },
+    tags=["auth"],
+)
+def recover_password(
+    request: RecoveryRequest,
+    registration_service: RegistrationService = Depends(get_registration_service),
+):
+    _, err = registration_service.reset_password(request)
     if err is not None:
         raise HTTPException(
             status_code=err.status_code,
