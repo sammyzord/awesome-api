@@ -1,8 +1,14 @@
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends, Response, Cookie, Body
 from ..schemas import HTTPError
-from ..schemas.user import User, UserIn
-from ..schemas.auth import AuthResponse, AuthRequest, RefreshRequest, RefreshResponse
+from ..schemas.user import User
+from ..schemas.auth import (
+    AuthResponse,
+    AuthRequest,
+    RefreshRequest,
+    RefreshResponse,
+    RegisterRequest,
+)
 from ..services.auth import RegistrationService, AuthService
 from ..dependencies.auth import get_registration_service, get_auth_service
 from ..dependencies.user import get_current_user
@@ -18,7 +24,7 @@ router = APIRouter()
     tags=["auth"],
 )
 async def register(
-    user: UserIn,
+    user: RegisterRequest,
     registration_service: RegistrationService = Depends(get_registration_service),
 ):
     err = registration_service.register_user(user)
@@ -119,6 +125,7 @@ def get_recovery_phrase(
     "/recover/activate",
     responses={
         400: {"model": HTTPError},
+        404: {"model": HTTPError},
         500: {"model": HTTPError},
     },
     tags=["auth"],

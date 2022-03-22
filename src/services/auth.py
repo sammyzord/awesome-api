@@ -6,8 +6,8 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy.exc import IntegrityError
 from .main import AppDBService
 from ..schemas import DBServiceError
-from ..schemas.user import UserIn, User
-from ..schemas.auth import AuthRequest
+from ..schemas.user import User
+from ..schemas.auth import RegisterRequest, AuthRequest
 from ..models.user import User as UserModel
 from ..dependencies.main import settings
 
@@ -17,7 +17,7 @@ class RegistrationService(AppDBService):
     username_taken = "username taken"
     mnemo = Mnemonic("english")
 
-    def register_user(self, user: UserIn):
+    def register_user(self, user: RegisterRequest):
         try:
             username = user.username
             byte_password = user.password.encode("utf-8")
@@ -87,6 +87,9 @@ class RegistrationService(AppDBService):
 
         except Exception as err:
             return None, DBServiceError(status_code=500, message=str(err))
+
+    def reset_password(self):
+        pass
 
 
 class AuthService(AppDBService):
