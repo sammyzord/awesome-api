@@ -22,7 +22,7 @@ class RegistrationService(AppDBService):
             username = user.username
             byte_password = user.password.encode("utf-8")
 
-            password = bcrypt.hashpw(byte_password, bcrypt.gensalt()).decode("utf8")
+            password = bcrypt.hashpw(byte_password, bcrypt.gensalt()).decode("utf-8")
 
             new_user = UserModel(username=username, password=password)
 
@@ -106,36 +106,50 @@ class AuthService(AppDBService):
                     status_code=400, message=self.invalid_credentials
                 )
 
-            auth_user = User.from_orm(query)
-
-            match = bcrypt.checkpw(password, auth_user.password.encode("utf-8"))
+            match = bcrypt.checkpw(password, query.password.encode("utf-8"))
             if not match:
                 return None, DBServiceError(
                     status_code=400, message=self.invalid_credentials
                 )
 
             refresh_token = secrets.token_hex(20)
+            byte_refresh_token = refresh_token.encode("utf-8")
 
-            query.refresh_token = refresh_token
+            encrypted_token = bcrypt.hashpw(
+                byte_refresh_token, bcrypt.gensalt()
+            ).decode("utf8")
+
+            query.refresh_token = encrypted_token
             self.db.commit()
 
-            jwt_token = self.sign_jwt(auth_user)
+            auth_user = User.from_orm(query)
 
-            return (jwt_token, refresh_token), None
+            jwt_token = self.sign_jwt(auth_user)
+            refresh_jwt = self.sign_refresh(auth_user.id, refresh_token)
+
+            return (jwt_token, refresh_jwt), None
 
         except Exception as err:
             return None, DBServiceError(status_code=500, message=str(err))
 
-    def refresh(self, user_id: int, refresh_token: str):
+    def refresh(self, refresh_token: str):
         try:
-            query = (
-                self.db.query(UserModel)
-                .filter(
-                    UserModel.id == user_id, UserModel.refresh_token == refresh_token
-                )
-                .first()
-            )
+            payload, err = self.verify_jwt(refresh_token)
+            if err is not None:
+                return None, err
+
+            user_id = None
+            token = None
+            if payload is not None:
+                user_id = payload["id"]
+                token = payload["refresh_token"].encode("utf-8")
+
+            query = self.db.query(UserModel).filter(UserModel.id == user_id).first()
             if query is None:
+                return None, DBServiceError(status_code=404, message="user not found")
+
+            match = bcrypt.checkpw(token, query.refresh_token.encode("utf-8"))
+            if not match:
                 return None, DBServiceError(status_code=400, message="invalid token")
 
             auth_user = User.from_orm(query)
@@ -152,6 +166,15 @@ class AuthService(AppDBService):
             "id": user.id,
             "username": user.username,
             "exp": datetime.now(tz=timezone.utc) + timedelta(minutes=30),
+        }
+
+        return jwt.encode(jwt_payload, settings().secret_key, algorithm="HS256")
+
+    @staticmethod
+    def sign_refresh(user_id: int, refresh_token: str) -> str:
+        jwt_payload = {
+            "id": user_id,
+            "refresh_token": refresh_token,
         }
 
         return jwt.encode(jwt_payload, settings().secret_key, algorithm="HS256")

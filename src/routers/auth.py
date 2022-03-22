@@ -57,7 +57,7 @@ async def login(
 
 
 @router.post(
-    "/{user_id}/refresh",
+    "/refresh",
     responses={
         200: {"model": RefreshResponse},
         401: {"model": HTTPError},
@@ -66,7 +66,6 @@ async def login(
     tags=["auth"],
 )
 async def refresh_authentication(
-    user_id: int,
     refresh_request: RefreshRequest,
     refresh_token: Optional[str] = Cookie(None),
     auth_service: AuthService = Depends(get_auth_service),
@@ -78,7 +77,7 @@ async def refresh_authentication(
             detail="no token provided",
         )
 
-    jwt_token, err = auth_service.refresh(user_id, token)
+    jwt_token, err = auth_service.refresh(token)
     if err is not None:
         raise HTTPException(
             status_code=err.status_code,
