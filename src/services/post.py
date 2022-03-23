@@ -1,8 +1,9 @@
 from .main import AppDBService
-from ..schemas import DBServiceError
 from ..schemas.post import PostIn, PostOut
 from ..models.post import Post as PostModel
 from sqlalchemy.orm import load_only
+from sqlalchemy.exc import NoResultFound
+from fastapi import HTTPException
 
 
 class PostDBService(AppDBService):
@@ -16,21 +17,20 @@ class PostDBService(AppDBService):
 
             self.db.refresh(new_post)
 
-            return PostOut.from_orm(new_post), None
+            return PostOut.from_orm(new_post)
 
         except Exception as err:
-            return None, DBServiceError(status_code=500, message=str(err))
+            raise HTTPException(status_code=500, detail=str(err))
 
     def retrieve_post(self, hash: str):
         try:
-            post = self.db.query(PostModel).filter(PostModel.hash == hash).one_or_none()
-            if post is None:
-                return None, DBServiceError(status_code=404, message="Post not found")
+            post = self.db.query(PostModel).filter(PostModel.hash == hash).one()
+            return PostOut.from_orm(post)
 
-            return PostOut.from_orm(post), None
-
+        except NoResultFound:
+            raise HTTPException(status_code=404, detail="Post not found")
         except Exception as err:
-            return None, DBServiceError(status_code=500, message=str(err))
+            raise HTTPException(status_code=500, detail=str(err))
 
     def comment_post(self, post: PostIn, parent_hash: str, user_id: int):
         try:
@@ -38,10 +38,8 @@ class PostDBService(AppDBService):
                 self.db.query(PostModel)
                 .filter(PostModel.hash == parent_hash)
                 .options(load_only("id"))
-                .one_or_none()
+                .one()
             )
-            if query is None:
-                return None, DBServiceError(status_code=404, message="Post not found")
 
             new_post = PostModel(
                 title=post.title,
@@ -55,7 +53,9 @@ class PostDBService(AppDBService):
 
             self.db.refresh(new_post)
 
-            return PostOut.from_orm(new_post), None
+            return PostOut.from_orm(new_post)
 
+        except NoResultFound:
+            raise HTTPException(status_code=404, detail="Post not found")
         except Exception as err:
-            return None, DBServiceError(status_code=500, message=str(err))
+            raise HTTPException(status_code=500, detail=str(err))

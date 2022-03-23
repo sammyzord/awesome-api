@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends
 from ..schemas import HTTPError
 from ..schemas.user import User
 from ..schemas.post import PostIn, PostOut
@@ -22,13 +22,7 @@ def create_post(
     user: User = Depends(get_current_active_user),
 ):
 
-    new_post, err = post_service.create_post(post, user.id)
-    if err is not None:
-        raise HTTPException(
-            status_code=err.status_code,
-            detail=err.message,
-        )
-
+    new_post = post_service.create_post(post, user.id)
     return new_post
 
 
@@ -43,13 +37,7 @@ def create_post(
     tags=["posts"],
 )
 def retrieve_post(hash: str, post_service: PostDBService = Depends(get_post_service)):
-    post, err = post_service.retrieve_post(hash)
-    if err is not None:
-        raise HTTPException(
-            status_code=err.status_code,
-            detail=err.message,
-        )
-
+    post = post_service.retrieve_post(hash)
     return post
 
 
@@ -69,11 +57,5 @@ def comment_on_post(
     post_service: PostDBService = Depends(get_post_service),
     user: User = Depends(get_current_active_user),
 ):
-    new_comment, err = post_service.comment_post(post, hash, user.id)
-    if err is not None:
-        raise HTTPException(
-            status_code=err.status_code,
-            detail=err.message,
-        )
-
+    new_comment = post_service.comment_post(post, hash, user.id)
     return new_comment
