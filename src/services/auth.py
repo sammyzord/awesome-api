@@ -38,7 +38,9 @@ class RegistrationService(AppDBService):
 
     def username_available(self, username: str):
         try:
-            exists = bool(self.db.query(User).filter(User.username == username).first())
+            exists = bool(
+                self.db.query(User).filter(User.username == username).one_or_none()
+            )
             if exists is not None:
                 return DBServiceError(status_code=400, message=self.username_taken)
 
@@ -49,7 +51,9 @@ class RegistrationService(AppDBService):
 
     def generate_recovery_key(self, user_id: int):
         try:
-            query = self.db.query(UserModel).filter(UserModel.id == user_id).first()
+            query = (
+                self.db.query(UserModel).filter(UserModel.id == user_id).one_or_none()
+            )
             if query is None:
                 return None, DBServiceError(status_code=404, message="User not found")
 
@@ -69,7 +73,9 @@ class RegistrationService(AppDBService):
 
     def activate_user(self, word_list: str, user_id: int):
         try:
-            query = self.db.query(UserModel).filter(UserModel.id == user_id).first()
+            query = (
+                self.db.query(UserModel).filter(UserModel.id == user_id).one_or_none()
+            )
             if query is None:
                 return None, DBServiceError(status_code=404, message="User not found")
 
@@ -93,7 +99,9 @@ class RegistrationService(AppDBService):
             username = request.username
 
             query = (
-                self.db.query(UserModel).filter(UserModel.username == username).first()
+                self.db.query(UserModel)
+                .filter(UserModel.username == username)
+                .one_or_none()
             )
             if query is None:
                 return None, DBServiceError(
@@ -131,7 +139,9 @@ class AuthService(AppDBService):
             password = auth_request.password.encode("utf-8")
 
             query = (
-                self.db.query(UserModel).filter(UserModel.username == username).first()
+                self.db.query(UserModel)
+                .filter(UserModel.username == username)
+                .one_or_none()
             )
             if query is None:
                 return None, DBServiceError(
@@ -176,7 +186,9 @@ class AuthService(AppDBService):
                 user_id = payload["id"]
                 token = payload["refresh_token"].encode("utf-8")
 
-            query = self.db.query(UserModel).filter(UserModel.id == user_id).first()
+            query = (
+                self.db.query(UserModel).filter(UserModel.id == user_id).one_or_none()
+            )
             if query is None:
                 return None, DBServiceError(status_code=404, message="user not found")
 

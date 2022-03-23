@@ -96,7 +96,7 @@ def refresh_authentication(
 
 
 @router.get(
-    "/reset/generate",
+    "/reset",
     responses={
         404: {"model": HTTPError},
         500: {"model": HTTPError},

@@ -22,7 +22,7 @@ def create_post(
     user: User = Depends(get_current_active_user),
 ):
 
-    new_post, err = post_service.create_post(post, user)
+    new_post, err = post_service.create_post(post, user.id)
     if err is not None:
         raise HTTPException(
             status_code=err.status_code,
@@ -51,3 +51,29 @@ def retrieve_post(hash: str, post_service: PostDBService = Depends(get_post_serv
         )
 
     return post
+
+
+@router.post(
+    "/{hash}",
+    status_code=200,
+    responses={
+        200: {"model": PostOut},
+        404: {"model": HTTPError},
+        500: {"model": HTTPError},
+    },
+    tags=["posts"],
+)
+def comment_on_post(
+    hash: str,
+    post: PostIn,
+    post_service: PostDBService = Depends(get_post_service),
+    user: User = Depends(get_current_active_user),
+):
+    new_comment, err = post_service.comment_post(post, hash, user.id)
+    if err is not None:
+        raise HTTPException(
+            status_code=err.status_code,
+            detail=err.message,
+        )
+
+    return new_comment
