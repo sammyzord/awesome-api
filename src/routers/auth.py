@@ -28,12 +28,7 @@ def register(
     request: RegisterRequest,
     registration_service: RegistrationService = Depends(get_registration_service),
 ):
-    err = registration_service.register_user(request)
-    if err is not None:
-        raise HTTPException(
-            status_code=err.status_code,
-            detail=err.message,
-        )
+    registration_service.register_user(request)
     return "success"
 
 
@@ -51,16 +46,10 @@ def login(
     auth_request: AuthRequest,
     auth_service: AuthService = Depends(get_auth_service),
 ):
-    tokens, err = auth_service.login(auth_request)
-    if err is not None:
-        raise HTTPException(
-            status_code=err.status_code,
-            detail=err.message,
-        )
+    tokens = auth_service.login(auth_request)
 
-    elif tokens is not None:
-        response.set_cookie(key="refresh_token", value=tokens[1], httponly=True)
-        return AuthResponse(jwt_token=tokens[0], refresh_token=tokens[1])
+    response.set_cookie(key="refresh_token", value=tokens[1], httponly=True)
+    return AuthResponse(jwt_token=tokens[0], refresh_token=tokens[1])
 
 
 @router.post(
@@ -84,15 +73,9 @@ def refresh_authentication(
             detail="no token provided",
         )
 
-    jwt_token, err = auth_service.refresh(token)
-    if err is not None:
-        raise HTTPException(
-            status_code=err.status_code,
-            detail=err.message,
-        )
+    jwt_token = auth_service.refresh(token)
 
-    elif jwt_token is not None:
-        return RefreshResponse(jwt_token=jwt_token)
+    return RefreshResponse(jwt_token=jwt_token)
 
 
 @router.get(
@@ -113,12 +96,8 @@ def get_recovery_phrase(
             detail="user already active",
         )
 
-    recovery_phrase, err = registration_service.generate_recovery_key(user.id)
-    if err is not None:
-        raise HTTPException(
-            status_code=err.status_code,
-            detail=err.message,
-        )
+    recovery_phrase = registration_service.generate_recovery_key(user.id)
+
     return recovery_phrase
 
 
@@ -142,12 +121,7 @@ def activate_account(
             detail="user already active",
         )
 
-    _, err = registration_service.activate_user(word_list, user.id)
-    if err is not None:
-        raise HTTPException(
-            status_code=err.status_code,
-            detail=err.message,
-        )
+    registration_service.activate_user(word_list, user.id)
 
     return "success"
 
@@ -164,11 +138,6 @@ def recover_password(
     request: RecoveryRequest,
     registration_service: RegistrationService = Depends(get_registration_service),
 ):
-    _, err = registration_service.reset_password(request)
-    if err is not None:
-        raise HTTPException(
-            status_code=err.status_code,
-            detail=err.message,
-        )
+    registration_service.reset_password(request)
 
     return "success"

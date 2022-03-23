@@ -3,9 +3,9 @@ import secrets
 import bcrypt
 from mnemonic import Mnemonic
 from datetime import datetime, timezone, timedelta
-from sqlalchemy.exc import IntegrityError
+from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError, NoResultFound
 from .main import AppDBService
-from ..schemas import DBServiceError
 from ..schemas.user import User
 from ..schemas.auth import RegisterRequest, AuthRequest, RecoveryRequest
 from ..models.user import User as UserModel
@@ -29,33 +29,22 @@ class RegistrationService(AppDBService):
             self.db.add(new_user)
             self.db.commit()
 
-            return None
-
         except IntegrityError:
-            return DBServiceError(status_code=400, message=self.username_taken)
+            raise HTTPException(status_code=400, detail=self.username_taken)
         except Exception as err:
-            return DBServiceError(status_code=500, message=str(err))
+            raise HTTPException(status_code=500, detail=str(err))
 
     def username_available(self, username: str):
         try:
-            exists = bool(
-                self.db.query(User).filter(User.username == username).one_or_none()
-            )
-            if exists is not None:
-                return DBServiceError(status_code=400, message=self.username_taken)
-
-            return None
-
+            self.db.query(User).filter(User.username == username).one()
+        except NoResultFound:
+            raise HTTPException(status_code=400, detail=self.username_taken)
         except Exception as err:
-            return DBServiceError(status_code=500, message=str(err))
+            raise HTTPException(status_code=500, detail=str(err))
 
     def generate_recovery_key(self, user_id: int):
         try:
-            query = (
-                self.db.query(UserModel).filter(UserModel.id == user_id).one_or_none()
-            )
-            if query is None:
-                return None, DBServiceError(status_code=404, message="User not found")
+            query = self.db.query(UserModel).filter(UserModel.id == user_id).one()
 
             word_list = self.mnemo.generate(strength=256)
             byte_word_list = word_list.encode("utf-8")
@@ -66,55 +55,46 @@ class RegistrationService(AppDBService):
 
             query.recovery_key = recovery_key
             self.db.commit()
-            return word_list, None
+            return word_list
 
+        except NoResultFound:
+            raise HTTPException(status_code=404, detail="User not found")
         except Exception as err:
-            return None, DBServiceError(status_code=500, message=str(err))
+            raise HTTPException(status_code=500, detail=str(err))
 
     def activate_user(self, word_list: str, user_id: int):
         try:
-            query = (
-                self.db.query(UserModel).filter(UserModel.id == user_id).one_or_none()
-            )
-            if query is None:
-                return None, DBServiceError(status_code=404, message="User not found")
+            query = self.db.query(UserModel).filter(UserModel.id == user_id).one()
 
             byte_word_list = word_list.encode("utf-8")
 
             match = bcrypt.checkpw(byte_word_list, query.recovery_key.encode("utf-8"))
             if not match:
-                return None, DBServiceError(
-                    status_code=400, message="invalid recovery phrase"
-                )
+                raise HTTPException(status_code=400, detail="invalid recovery phrase")
 
             query.active = True
             self.db.commit()
-            return True, None
 
+        except NoResultFound:
+            raise HTTPException(status_code=404, detail="User not found")
         except Exception as err:
-            return None, DBServiceError(status_code=500, message=str(err))
+            raise HTTPException(status_code=500, detail=str(err))
 
     def reset_password(self, request: RecoveryRequest):
         try:
             username = request.username
 
             query = (
-                self.db.query(UserModel)
-                .filter(UserModel.username == username)
-                .one_or_none()
+                self.db.query(UserModel).filter(UserModel.username == username).one()
             )
-            if query is None:
-                return None, DBServiceError(
-                    status_code=400, message="invalid recovery credentials"
-                )
 
             word_list = request.recovery_key
             byte_word_list = word_list.encode("utf-8")
 
             match = bcrypt.checkpw(byte_word_list, query.recovery_key.encode("utf-8"))
             if not match:
-                return None, DBServiceError(
-                    status_code=400, message="invalid recovery credentials"
+                raise HTTPException(
+                    status_code=400, detail="invalid recovery credentials"
                 )
 
             byte_password = request.password.encode("utf-8")
@@ -123,10 +103,11 @@ class RegistrationService(AppDBService):
 
             query.password = password
             self.db.commit()
-            return True, None
 
+        except NoResultFound:
+            raise HTTPException(status_code=400, detail="invalid recovery credentials")
         except Exception as err:
-            return None, DBServiceError(status_code=500, message=str(err))
+            raise HTTPException(status_code=500, detail=str(err))
 
 
 class AuthService(AppDBService):
@@ -139,20 +120,12 @@ class AuthService(AppDBService):
             password = auth_request.password.encode("utf-8")
 
             query = (
-                self.db.query(UserModel)
-                .filter(UserModel.username == username)
-                .one_or_none()
+                self.db.query(UserModel).filter(UserModel.username == username).one()
             )
-            if query is None:
-                return None, DBServiceError(
-                    status_code=400, message=self.invalid_credentials
-                )
 
             match = bcrypt.checkpw(password, query.password.encode("utf-8"))
             if not match:
-                return None, DBServiceError(
-                    status_code=400, message=self.invalid_credentials
-                )
+                raise HTTPException(status_code=400, detail=self.invalid_credentials)
 
             refresh_token = secrets.token_hex(20)
             byte_refresh_token = refresh_token.encode("utf-8")
@@ -169,40 +142,35 @@ class AuthService(AppDBService):
             jwt_token = self.sign_jwt(auth_user)
             refresh_jwt = self.sign_refresh(auth_user.id, refresh_token)
 
-            return (jwt_token, refresh_jwt), None
+            return (jwt_token, refresh_jwt)
 
+        except NoResultFound:
+            raise HTTPException(status_code=400, detail=self.invalid_credentials)
         except Exception as err:
-            return None, DBServiceError(status_code=500, message=str(err))
+            raise HTTPException(status_code=500, detail=str(err))
 
     def refresh(self, refresh_token: str):
         try:
-            payload, err = self.verify_jwt(refresh_token)
-            if err is not None:
-                return None, err
+            payload = self.verify_jwt(refresh_token)
 
-            user_id = None
-            token = None
-            if payload is not None:
-                user_id = payload["id"]
-                token = payload["refresh_token"].encode("utf-8")
+            user_id = payload["id"]
+            token = payload["refresh_token"].encode("utf-8")
 
-            query = (
-                self.db.query(UserModel).filter(UserModel.id == user_id).one_or_none()
-            )
-            if query is None:
-                return None, DBServiceError(status_code=404, message="user not found")
+            query = self.db.query(UserModel).filter(UserModel.id == user_id).one()
 
             match = bcrypt.checkpw(token, query.refresh_token.encode("utf-8"))
             if not match:
-                return None, DBServiceError(status_code=400, message="invalid token")
+                raise HTTPException(status_code=400, detail="invalid token")
 
             auth_user = User.from_orm(query)
 
             jwt_token = self.sign_jwt(auth_user)
 
-            return jwt_token, None
+            return jwt_token
+        except NoResultFound:
+            raise HTTPException(status_code=400, detail="invalid token")
         except Exception as err:
-            return None, DBServiceError(status_code=500, message=str(err))
+            raise HTTPException(status_code=500, detail=str(err))
 
     @staticmethod
     def sign_jwt(user: User) -> str:
@@ -226,11 +194,9 @@ class AuthService(AppDBService):
     @staticmethod
     def verify_jwt(jwt_token: str):
         try:
-            return (
-                jwt.decode(jwt_token, settings().secret_key, algorithms=["HS256"]),
-                None,
-            )
+            return jwt.decode(jwt_token, settings().secret_key, algorithms=["HS256"])
+
         except jwt.ExpiredSignatureError:
-            return None, DBServiceError(status_code=401, message="expired token")
+            raise HTTPException(status_code=401, detail="expired token")
         except Exception as err:
-            return None, DBServiceError(status_code=401, message=str(err))
+            raise HTTPException(status_code=401, detail=str(err))
