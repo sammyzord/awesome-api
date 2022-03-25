@@ -17,13 +17,7 @@ def get_current_user(
     jwt_payload: Dict[str, Any] = Depends(validate_jwt),
     user_service: UserDBService = Depends(get_user_service),
 ):
-    user, err = user_service.auth_user(jwt_payload["id"])
-    if err is not None:
-        raise HTTPException(
-            status_code=err.status_code,
-            detail=err.message,
-        )
-
+    user = user_service.auth_user(jwt_payload["id"])
     return user
 
 
